@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificador de Seed Bitcoin - Corrigido</title>
+    <script src="https://cdn.jsdelivr.net/npm/bip39@3.0.4/bip39.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bitcoinjs-lib@6.1.0/bitcoinjs-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            margin-top: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.2rem;
+        }
+        
+        .target-address {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            font-family: monospace;
+            font-size: 1.1rem;
+            border-left: 5px solid #3498db;
+        }
+        
+        .input-section {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-generate {
+            background-color: #3498db;
+            color: white;
+            flex: 1;
+        }
+        
+        .btn-generate:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-clear {
+            background-color: #e74c3c;
+            color: white;
+            flex: 1;
+        }
+        
+        .btn-clear:hover {
+            background-color: #c0392b;
+        }
+        
+        .result-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .result-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        .address-result {
+            font-family: monospace;
+            font-size: 1.1rem;
+            word-break: break-all;
+            padding: 15px;
+            background-color: #ecf0f1;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .match-result {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-top: 15px;
+        }
+        
+        .match {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .no-match {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .info-box {
+            background-color: #d4edff;
+            border-left: 5px solid #3498db;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 25px;
+        }
+        
+        .info-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .hint-section {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #fff3cd;
+            border-radius: 8px;
+            border-left: 5px solid #ffc107;
+        }
+        
+        .hint-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #856404;
+        }
+        
+        .hint-list {
+            padding-left: 20px;
+        }
+        
+        .hint-list li {
+            margin-bottom: 8px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .status-loading {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-ready {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Verificador de Seed Bitcoin</h1>
+            <p class="subtitle">Insira uma seed phrase para gerar e verificar o endereço Bitcoin</p>
+        </header>
+        
+        <div id="libStatus" class="status status-loading">Carregando bibliotecas...</div>
+        
+        <div class="target-address">
+            Endereço procurado: <strong>1KfZGvwZxsvSmemoCmEV75uqcNzYBHjkHZ</strong>
+        </div>
+        
+        <div class="input-section">
+            <label for="seedPhrase">Seed Phrase (12 palavras separadas por espaços):</label>
+            <textarea id="seedPhrase" placeholder="Ex: subject hour breath day food moon black real this only bitcoin seed">food only subject matter justice hour brain dawn study study breath home</textarea>
+        </div>
+        
+        <div class="buttons">
+            <button class="btn-generate" onclick="generateAddress()">Gerar Endereço</button>
+            <button class="btn-clear" onclick="clearFields()">Limpar</button>
+        </div>
+        
+        <div class="result-section">
+            <h3 class="result-title">Resultado</h3>
+            <div class="address-result" id="generatedAddress">Aguardando geração...</div>
+            <div id="matchResult" class="match-result">Insira uma seed phrase e clique em Gerar</div>
+        </div>
+        
+        <div class="info-box">
+            <div class="info-title">Como funciona:</div>
+            <p>Esta ferramenta gera um endereço Bitcoin a partir de uma seed phrase usando o padrão BIP44 (caminho m/44'/0'/0'/0/0).</p>
+            <p>O endereço gerado é comparado com o endereço alvo: <strong>1KfZGvwZxsvSmemoCmEV75uqcNzYBHjkHZ</strong>.</p>
+        </div>
+        
+        <div class="hint-section">
+            <div class="hint-title">Dicas do Puzzle (1000059081.jpg):</div>
+            <ul class="hint-list">
+                <li>'Moon' e 'Tower' estão nos ponteiros do relógio</li>
+                <li>'Food' está na Seattle Space Needle</li>
+                <li>'Breathe' está no peito de George Floyd e no pescoço da estátua</li>
+                <li>Runa 1 (Russo): "I hope that many bitcoins will be sent here"</li>
+                <li>Runa 2 (Russo): "Sum of two numbers"</li>
+                <li>Runa 3 (Bill's Cipher): "Tuesday"</li>
+                <li>Runa 4 (Russo): "Here are encrypted bitcoins for a rainy day number X"</li>
+                <li>'This' aparece em várias frases: "This is the first prediction", "Fuck this shit", "Find the seed phrase in this picture"</li>
+                <li>'Subject' está sublinhado na estátua à direita</li>
+                <li>'Real' aparece na base da Estátua da Liberdade ("Only real Bitcoin")</li>
+                <li>'Black' aparece no movimento Black Lives Matter e no provérbio latino</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Endereço alvo
+        const TARGET_ADDRESS = "1KfZGvwZxsvSmemoCmEV75uqcNzYBHjkHZ";
+        let librariesLoaded = false;
+        
+        // Verificar se as bibliotecas foram carregadas
+        function checkLibraries() {
+            if (typeof bip39 !== 'undefined' && typeof bitcoin !== 'undefined') {
+                document.getElementById('libStatus').textContent = 'Bibliotecas carregadas com sucesso!';
+                document.getElementById('libStatus').className = 'status status-ready';
+                librariesLoaded = true;
+            } else {
+                document.getElementById('libStatus').textContent = 'Erro ao carregar bibliotecas. Recarregue a página.';
+                document.getElementById('libStatus').className = 'status status-error';
+                librariesLoaded = false;
+            }
+        }
+        
+        // Verificar periodicamente se as bibliotecas foram carregadas
+        const libCheckInterval = setInterval(checkLibraries, 500);
+        
+        // Função para gerar endereço Bitcoin a partir da seed phrase
+        function generateAddress() {
+            if (!librariesLoaded) {
+                alert('Aguarde as bibliotecas serem carregadas completamente.');
+                return;
+            }
+            
+            const seedPhrase = document.getElementById('seedPhrase').value.trim();
+            const generatedAddressElement = document.getElementById('generatedAddress');
+            const matchResultElement = document.getElementById('matchResult');
+            
+            if (!seedPhrase) {
+                generatedAddressElement.textContent = "Por favor, insira uma seed phrase.";
+                matchResultElement.textContent = "Seed phrase não fornecida";
+                matchResultElement.className = "match-result no-match";
+                return;
+            }
+            
+            try {
+                // Verificar se a seed phrase é válida
+                if (!bip39.validateMnemonic(seedPhrase)) {
+                    generatedAddressElement.textContent = "Seed phrase inválida. Tentando gerar endereço mesmo assim...";
+                }
+                
+                // Gerar seed bytes from mnemonic
+                const seed = bip39.mnemonicToSeedSync(seedPhrase);
+                
+                // Gerar chave raiz usando bitcoinjs-lib
+                const root = bitcoin.bip32.fromSeed(seed);
+                
+                // Derivar chave no caminho BIP44: m/44'/0'/0'/0/0
+                const child = root.derivePath("m/44'/0'/0'/0/0");
+                
+                // Gerar endereço P2PKH (legacy)
+                const { address } = bitcoin.payments.p2pkh({ pubkey: child.publicKey });
+                
+                // Exibir o endereço gerado
+                generatedAddressElement.textContent = address;
+                
+                // Verificar se corresponde ao endereço alvo
+                if (address === TARGET_ADDRESS) {
+                    matchResultElement.textContent = "🎉 CORRESPONDÊNCIA ENCONTRADA! 🎉";
+                    matchResultElement.className = "match-result match";
+                } else {
+                    matchResultElement.textContent = "Não corresponde ao endereço procurado";
+                    matchResultElement.className = "match-result no-match";
+                }
+            } catch (error) {
+                console.error(error);
+                generatedAddressElement.textContent = "Erro ao gerar endereço: " + error.message;
+                matchResultElement.textContent = "Erro na geração";
+                matchResultElement.className = "match-result no-match";
+            }
+        }
+        
+        // Função para limpar os campos
+        function clearFields() {
+            document.getElementById('seedPhrase').value = '';
+            document.getElementById('generatedAddress').textContent = 'Aguardando geração...';
+            document.getElementById('matchResult').textContent = 'Insira uma seed phrase e clique em Gerar';
+            document.getElementById('matchResult').className = 'match-result';
+        }
+        
+        // Parar de verificar as bibliotecas após 10 segundos
+        setTimeout(() => {
+            clearInterval(libCheckInterval);
+            if (!librariesLoaded) {
+                document.getElementById('libStatus').textContent = 'Não foi possível carregar todas as bibliotecas. Recarregue a página.';
+                document.getElementById('libStatus').className = 'status status-error';
+            }
+        }, 10000);
+    </script>
+</body>
+</html>
